@@ -22,6 +22,7 @@ model User {
   role         Role     @default(USER)
 
   googleId      String?  @unique
+  appleId       String?  @unique
   avatarUrl     String?
   emailVerified Boolean  @default(false)
 
@@ -39,6 +40,8 @@ model User {
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
   preOrders     PreOrder[]
+
+  passwordResetTokens PasswordResetToken[]
 
   deviceTokens           DeviceToken[]
   notifications          Notification[]
@@ -77,6 +80,26 @@ model RefreshToken {
   @@index([userId])
 }
 
+model PasswordResetToken {
+  id        String   @id @default(uuid())
+  tokenHash String   @unique
+  codeHash  String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  expiresAt DateTime
+  usedAt    DateTime?
+  attempts  Int      @default(0)
+
+  ipAddress String?
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
 model Address {
   id        String   @id @default(uuid())
   userId    String
@@ -106,6 +129,13 @@ model Category {
   slug        String   @unique
   description String?
   image       String?
+
+  // SEO overrides (admin SEO panel) — fall back to generated metadata when null.
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  noindex         Boolean @default(false)
+
   parentId    String?
   isActive    Boolean  @default(true)
 
@@ -136,11 +166,28 @@ model Product {
   costPrice    Decimal?     @db.Decimal(12,2) // purchase cost per unit — used for exact P&L; falls back to an estimate when null
   isOnSale     Boolean      @default(false)
   priceDisplay PriceDisplay @default(BOTH)
+  /// The price a customer actually pays: salePrice when on sale, else price.
+  /// Kept in sync by a Postgres trigger (see the effective_price_via_trigger
+  /// migration) — READ ONLY, never write to it. Exists so "sort by price" and the
+  /// min/max price filter can be indexed SQL instead of an in-memory sort.
+  effectivePrice Decimal?   @db.Decimal(12,2)
   quantity    Int      @default(0)
   inStock     Boolean  @default(true)
   categoryId  String
 
   specifications Json?
+
+  // SEO overrides (admin SEO panel) — fall back to generated metadata when null.
+  metaTitle       String?
+  metaDescription String?
+  ogImage         String?
+  noindex         Boolean @default(false)
+
+  // Merchant / product identity (Google Shopping feed + Product JSON-LD).
+  brand     String?
+  gtin      String?
+  mpn       String?
+  condition String? @default("new")
 
   preOrderEnabled Boolean  @default(false)
   bookingAmount   Decimal? @db.Decimal(12,2)
@@ -166,6 +213,7 @@ model Product {
   @@index([slug])
   @@index([categoryId])
   @@index([deletedAt])
+  @@index([effectivePrice])
 }
 
 model ProductImage {
