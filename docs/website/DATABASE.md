@@ -6,7 +6,7 @@ drill. Neon is only ever read during the move and stays untouched until it is re
 
 | | Website | CRM (unchanged) |
 | --- | --- | --- |
-| Container | `ls-postgres`, Postgres 17 | `crm-postgres`, Postgres 17 |
+| Container | `ls-postgres`, Postgres 18 (same as Neon) | `crm-postgres`, Postgres 17 |
 | Listens on | 127.0.0.1:5432 | 127.0.0.1:5433 |
 | Compose file | `docker/website-postgres.compose.yml` | `docker/crm-postgres.compose.yml` |
 | Run from | /var/www/little-stepz | /srv/littlestepz |
@@ -299,7 +299,7 @@ Schema changes now work offline with `npx prisma migrate dev`.
 ### Postgres updates
 
 Minor versions (monthly): `docker compose -f docker/website-postgres.compose.yml --env-file docker/.env pull`
-then `… up -d` (about 5 seconds of downtime). A major upgrade (17 → 18) needs a dump and restore; plan it
+then `… up -d` (about 5 seconds of downtime). A major upgrade (18 → 19) needs a dump and restore; plan it
 separately.
 
 ## Phase 8 — Retire Neon (7 days after a clean cutover)
@@ -315,7 +315,7 @@ separately.
 | Symptom | Check | Fix |
 | --- | --- | --- |
 | `neon-copy.sh`: "holds the pooled URL" | `/root/neon.url` | Paste the string with pooling off (no `-pooler` in the host) |
-| `neon-copy.sh`: "Neon runs Postgres 18" | — | Set the image to `postgres:18-alpine` in the compose file, recreate the empty container, rerun |
+| `neon-copy.sh`: "Neon runs Postgres N" | — | Neon was upgraded: set the image to `postgres:N-alpine` in the compose file, check that image's data path, recreate the empty container (volume included), rerun |
 | `neon-copy.sh cutover`: "other connection(s) to Neon" | The listed `application_name`/`client_addr` | Stop that process (backend, a laptop with Prisma Studio open), rerun |
 | `pg_restore` error during rehearsal | The error text | Nothing changed anywhere; send the output for a look before the cutover |
 | Backend logs P1001 "Can't reach database server" | `docker ps --filter name=ls-postgres` | `docker compose -f docker/website-postgres.compose.yml --env-file docker/.env up -d` |
