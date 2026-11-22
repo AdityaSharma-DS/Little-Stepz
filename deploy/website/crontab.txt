@@ -1,0 +1,10 @@
+# Website database jobs (install with: crontab -e as root). The VPS clock is UTC; IST = UTC + 5:30.
+# Runs half an hour after the CRM's backup (20:45 UTC) so the two dumps never overlap.
+#
+# Nightly backup at 21:15 UTC (02:45 IST), copied off-server (OFFSITE in /etc/website-backup.env).
+15 21 * * * /var/www/little-stepz/deploy/website/backup.sh >> /var/log/website/backup.log 2>&1
+#
+# Restore drill on the 1st of each month at 22:30 UTC (04:00 IST on the 2nd): restores last
+# night's state into a scratch database and checks every table. A failure means the backups
+# can't be trusted.
+30 22 1 * * /var/www/little-stepz/deploy/website/restore-drill.sh >> /var/log/website/restore-drill.log 2>&1
