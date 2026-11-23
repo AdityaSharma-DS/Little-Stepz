@@ -176,16 +176,30 @@ export async function getFeaturedProducts(
   return (data?.products ?? []).slice(0, limit)
 }
 
+/** The products API's largest page; it clamps anything bigger to this. */
+const PAGE_SIZE = 100
+
+/**
+ * Every product, for the sitemap, the Merchant Center feed and llms.txt.
+ *
+ * The list endpoint answers `{ products, total, page, limit, pages }`. This loop
+ * used to stop on `meta.totalPages`, which the API never sends, so it always
+ * ended after page 1: once the catalogue passed 100 products, the rest were
+ * missing from all three (audit LS-01). If `pages` is ever absent, a short page
+ * still marks the last one, rather than quietly stopping at 100 again.
+ */
 export async function getAllProducts(): Promise<SeoProduct[]> {
   const out: SeoProduct[] = []
   for (let page = 1; page <= 20; page++) {
-    const data = await getJson<{ products: SeoProduct[]; meta?: { totalPages?: number } }>(
-      `/products?page=${page}&limit=100`,
+    const data = await getJson<{ products: SeoProduct[]; pages?: number }>(
+      `/products?page=${page}&limit=${PAGE_SIZE}`,
       "products",
     )
     if (!data?.products?.length) break
     out.push(...data.products)
-    if (page >= (data.meta?.totalPages ?? 1)) break
+    const isLast =
+      data.pages !== undefined ? page >= data.pages : data.products.length < PAGE_SIZE
+    if (isLast) break
   }
   return out
 }
